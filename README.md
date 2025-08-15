@@ -2,22 +2,23 @@
 
 ## Informações do projeto
 
-Este projeto está sendo desenvolvido com:
+Este projeto foi desenvolvido com:
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+- **Vite**
+- **TypeScript**
+- **React**
+- **shadcn-ui**
+- **Tailwind CSS**
+
+---
 
 ## Como editar o código
 
 Você pode trabalhar neste projeto de diferentes formas:
 
-### 1. Usando seu editor de código
+### Usando editor de código local
 
-Se preferir trabalhar localmente:
-
+```bash
 # Passo 1: Clone o repositório
 git clone <URL_DO_SEU_REPOSITORIO>
 
@@ -29,3 +30,4 @@ npm install
 
 # Passo 4: Inicie o servidor de desenvolvimento
 npm run dev
+```
