@@ -7,43 +7,13 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.4"
   }
   public: {
     Tables: {
-      profiles: {
-        Row: {
-          created_at: string
-          email: string
-          id: string
-          nome: string
-          preferencias: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          email: string
-          id?: string
-          nome: string
-          preferencias?: string | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          email?: string
-          id?: string
-          nome?: string
-          preferencias?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       usuario: {
         Row: {
           data_cadastro: string
@@ -52,6 +22,8 @@ export type Database = {
           nome: string
           preferencias: string | null
           senha: string
+          token_ativo: boolean | null
+          user_id: string | null
         }
         Insert: {
           data_cadastro: string
@@ -60,6 +32,8 @@ export type Database = {
           nome: string
           preferencias?: string | null
           senha: string
+          token_ativo?: boolean | null
+          user_id?: string | null
         }
         Update: {
           data_cadastro?: string
@@ -68,6 +42,8 @@ export type Database = {
           nome?: string
           preferencias?: string | null
           senha?: string
+          token_ativo?: boolean | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -76,7 +52,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      migrate_existing_usuarios: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

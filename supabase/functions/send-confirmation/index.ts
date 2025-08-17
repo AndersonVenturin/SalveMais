@@ -27,15 +27,16 @@ const handler = async (req: Request): Promise<Response> => {
     const { email, nome, userId }: ConfirmationEmailRequest = await req.json();
     console.log("Processing confirmation email for:", email);
 
-    // Gerar token único para confirmação
+    // Gerar token único para confirmação com timestamp de expiração (2 minutos para teste)
     const confirmationToken = crypto.randomUUID();
+    const expirationTime = Date.now() + (2 * 60 * 1000); // 2 minutos em milliseconds
     
     // Obter a URL base do request
     const requestUrl = new URL(req.url);
     const baseUrl = req.headers.get('referer') || req.headers.get('origin') || `${requestUrl.protocol}//${requestUrl.host}`;
     const siteUrl = baseUrl.replace(/\/$/, ''); // Remove trailing slash
     
-    const confirmationUrl = `${siteUrl}/confirm-email?token=${confirmationToken}&userId=${userId}`;
+    const confirmationUrl = `${siteUrl}/confirm-email?token=${confirmationToken}&userId=${userId}&expires=${expirationTime}`;
     
     console.log("Confirmation URL:", confirmationUrl);
 
@@ -55,9 +56,9 @@ const handler = async (req: Request): Promise<Response> => {
               Confirmar E-mail
             </a>
           </div>
-          <p style="color: #666; font-size: 14px;">
-            Se você não solicitou este cadastro, pode ignorar este e-mail.
-          </p>
+           <p style="color: #666; font-size: 14px;">
+             <strong>Este link expira em 2 minutos.</strong> Se você não solicitou este cadastro, pode ignorar este e-mail.
+           </p>
           <p style="color: #666; font-size: 14px;">
             Atenciosamente,<br>
             Equipe Salve+

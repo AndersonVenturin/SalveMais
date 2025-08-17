@@ -6,13 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
+import { MultiSelect, type Option } from "@/components/ui/multi-select";
+import { formatInTimeZone } from 'date-fns-tz';
 import { Eye, EyeOff, Mail, Lock, User, Heart } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import salveLogo from "@/assets/salve-logo.png";
 import { supabase } from "@/integrations/supabase/client";
 import bcrypt from "bcryptjs";
+import emailjs from '@emailjs/browser';
 
 const registerSchema = z.object({
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
@@ -25,7 +27,7 @@ const registerSchema = z.object({
     .regex(/[A-Z]/, "Senha deve conter pelo menos uma letra maiúscula")
     .regex(/\d/, "Senha deve conter pelo menos um número")
     .regex(/[^a-zA-Z0-9]/, "Senha deve conter pelo menos um caractere especial"),
-  preferences: z.array(z.string()).min(1, "Selecione pelo menos uma preferência"),
+  preferences: z.array(z.string()).optional(),
 });
 
 type RegisterFormData = z.infer<typeof registerSchema>;
@@ -107,8 +109,8 @@ const RegisterForm = () => {
           nome: data.name,
           email: data.email.toLowerCase().trim(),
           senha: hashedPassword,
-          preferencias: data.preferences.join(', '),
-          data_cadastro: new Date().toISOString(),
+          preferencias: data.preferences ? data.preferences.join(', ') : '',
+          data_cadastro: formatInTimeZone(new Date(), 'America/Sao_Paulo', "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"),
           token_ativo: false
         })
         .select()
@@ -121,16 +123,32 @@ const RegisterForm = () => {
 
       console.log("Usuário cadastrado com sucesso:", newUser);
 
-      // Enviar email de confirmação
-      const { error: emailError } = await supabase.functions.invoke('send-confirmation', {
-        body: { 
-          email: data.email.toLowerCase().trim(), 
-          nome: data.name,
-          userId: newUser.id 
-        }
-      });
+      // Enviar email de confirmação usando EmailJS
+      try {
+        const confirmationToken = crypto.randomUUID();
+        const expirationTime = Date.now() + (5 * 60 * 1000); // 5 minutos
+        const confirmationUrl = `${window.location.origin}/confirm-email?token=${confirmationToken}&userId=${newUser.id}&expires=${expirationTime}`;
 
-      if (emailError) {
+        const emailParams = {
+          to_email: data.email.toLowerCase().trim(),
+          to_name: data.name,
+          user_name: data.name, // Variável adicional para o nome
+          confirmation_url: confirmationUrl,
+          confirmation_link: confirmationUrl, // Variável adicional para o link
+          reply_to: 'noreply@salve.com',
+        };
+
+        console.log('Enviando email com parâmetros:', emailParams);
+
+        await emailjs.send(
+          'service_salve', // Service ID do EmailJS
+          'template_salve', // Template ID do EmailJS
+          emailParams,
+          'Pcq-7YzuNvqGoCb-7' // Public Key do EmailJS
+        );
+        
+        console.log('Email de confirmação enviado com sucesso');
+      } catch (emailError) {
         console.error('Erro ao enviar email:', emailError);
         // Não bloquear o cadastro se o email falhar
       }
@@ -152,7 +170,7 @@ const RegisterForm = () => {
     }
   };
 
-  const preferences = [
+  const preferences: Option[] = [
     { value: "eletronicos", label: "📱 Eletrônicos" },
     { value: "livros", label: "📚 Livros" },
     { value: "filmes", label: "🎬 Filmes" },
@@ -279,41 +297,22 @@ const RegisterForm = () => {
 
             <div className="space-y-2">
               <Label className="text-sm font-medium text-foreground">
-                Preferências
+                Preferências <span className="text-muted-foreground">(opcional)</span>
               </Label>
-              <div className="space-y-3">
-                <div className="flex items-center space-x-2 mb-2">
-                  <Heart className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Selecione suas preferências:</span>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {preferences.map((preference) => (
-                    <div key={preference.value} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={preference.value}
-                        checked={selectedPreferences.includes(preference.value)}
-                        onCheckedChange={(checked) => {
-                          let newPreferences = [...selectedPreferences];
-                          if (checked) {
-                            newPreferences.push(preference.value);
-                          } else {
-                            newPreferences = newPreferences.filter(p => p !== preference.value);
-                          }
-                          setSelectedPreferences(newPreferences);
-                          setValue("preferences", newPreferences);
-                        }}
-                        className="border-border"
-                      />
-                      <Label 
-                        htmlFor={preference.value} 
-                        className="text-sm text-foreground cursor-pointer"
-                      >
-                        {preference.label}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
+              <div className="flex items-center space-x-2 mb-2">
+                <Heart className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Selecione suas preferências:</span>
               </div>
+              <MultiSelect
+                options={preferences}
+                selected={selectedPreferences}
+                onChange={(newPreferences) => {
+                  setSelectedPreferences(newPreferences);
+                  setValue("preferences", newPreferences);
+                }}
+                placeholder="Selecione suas preferências..."
+                className="border-border focus:ring-primary"
+              />
               {errors.preferences && (
                 <p className="text-sm text-destructive">{errors.preferences.message}</p>
               )}

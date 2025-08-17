@@ -28,14 +28,29 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { userId } = await req.json();
-    console.log("Confirming email for userId:", userId);
+    const { userId, expires } = await req.json();
+    console.log("Confirming email for userId:", userId, "expires:", expires);
 
     if (!userId) {
       return new Response(
         JSON.stringify({ error: "userId é obrigatório" }),
         {
           status: 400,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
+    // Verificar se o link expirou
+    if (expires && Date.now() > parseInt(expires)) {
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: "E-mail expirado. Solicite o e-mail de ativação novamente.", 
+          expired: true 
+        }),
+        {
+          status: 200,
           headers: { "Content-Type": "application/json", ...corsHeaders },
         }
       );
