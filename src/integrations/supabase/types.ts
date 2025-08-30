@@ -14,6 +14,156 @@ export type Database = {
   }
   public: {
     Tables: {
+      produto: {
+        Row: {
+          contato: string
+          data_alteracao: string | null
+          data_insercao: string
+          descricao: string
+          id: number
+          municipio: string
+          nome: string
+          quantidade: number
+          tipo_produto_id: number
+          tipo_transacao_id: number | null
+          uf: string
+          usuario_id: number
+        }
+        Insert: {
+          contato: string
+          data_alteracao?: string | null
+          data_insercao: string
+          descricao: string
+          id?: number
+          municipio: string
+          nome: string
+          quantidade: number
+          tipo_produto_id: number
+          tipo_transacao_id?: number | null
+          uf: string
+          usuario_id: number
+        }
+        Update: {
+          contato?: string
+          data_alteracao?: string | null
+          data_insercao?: string
+          descricao?: string
+          id?: number
+          municipio?: string
+          nome?: string
+          quantidade?: number
+          tipo_produto_id?: number
+          tipo_transacao_id?: number | null
+          uf?: string
+          usuario_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "produto_tipo_produto_id_fkey"
+            columns: ["tipo_produto_id"]
+            isOneToOne: false
+            referencedRelation: "tipo_produto"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produto_tipo_transacao_id_fkey"
+            columns: ["tipo_transacao_id"]
+            isOneToOne: false
+            referencedRelation: "tipo_transacao"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produto_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "usuario"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      produto_foto: {
+        Row: {
+          data_insercao: string | null
+          foto: string
+          id: number
+          produto_id: number
+        }
+        Insert: {
+          data_insercao?: string | null
+          foto: string
+          id?: number
+          produto_id: number
+        }
+        Update: {
+          data_insercao?: string | null
+          foto?: string
+          id?: number
+          produto_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "produto_foto_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produto"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      situacao: {
+        Row: {
+          data_insercao: string | null
+          id: number
+          nome: string
+        }
+        Insert: {
+          data_insercao?: string | null
+          id?: number
+          nome: string
+        }
+        Update: {
+          data_insercao?: string | null
+          id?: number
+          nome?: string
+        }
+        Relationships: []
+      }
+      tipo_produto: {
+        Row: {
+          data_insercao: string
+          id: number
+          nome: string
+        }
+        Insert: {
+          data_insercao: string
+          id?: number
+          nome: string
+        }
+        Update: {
+          data_insercao?: string
+          id?: number
+          nome?: string
+        }
+        Relationships: []
+      }
+      tipo_transacao: {
+        Row: {
+          data_insercao: string
+          id: number
+          nome: string
+        }
+        Insert: {
+          data_insercao: string
+          id?: number
+          nome: string
+        }
+        Update: {
+          data_insercao?: string
+          id?: number
+          nome?: string
+        }
+        Relationships: []
+      }
       usuario: {
         Row: {
           data_cadastro: string
@@ -55,6 +205,16 @@ export type Database = {
       migrate_existing_usuarios: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      verify_user_login: {
+        Args: { user_email: string }
+        Returns: {
+          email: string
+          id: number
+          nome: string
+          senha: string
+          token_ativo: boolean
+        }[]
       }
     }
     Enums: {

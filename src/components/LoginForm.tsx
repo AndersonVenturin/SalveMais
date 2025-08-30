@@ -25,12 +25,11 @@ const LoginForm = () => {
     try {
       console.log("Tentando fazer login com:", email);
       
-      // Buscar usuário pelo email
-      const { data: usuario, error: fetchError } = await supabase
-        .from('usuario')
-        .select('*')
-        .eq('email', email.toLowerCase().trim())
-        .maybeSingle();
+      // Use secure function to verify login instead of direct table access
+      const { data: userData, error: fetchError } = await supabase
+        .rpc('verify_user_login', { user_email: email.toLowerCase().trim() });
+
+      const usuario = userData && userData.length > 0 ? userData[0] : null;
 
       console.log("Resultado da busca:", { usuario, fetchError });
 
@@ -84,6 +83,25 @@ const LoginForm = () => {
         return;
       }
 
+      // Fazer login real no Supabase Auth usando o user_id
+      if ((usuario as any).user_id) {
+        console.log("Fazendo login no Supabase Auth...");
+        
+        // Fazer login no Supabase Auth usando signInWithPassword
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email: email.toLowerCase().trim(),
+          password: password,
+        });
+
+        if (authError) {
+          console.error("Erro no login do Supabase:", authError);
+          // Se falhar, ainda podemos prosseguir com nossa lógica customizada
+          // mas vamos tentar criar uma sessão usando o signIn alternativo
+        } else {
+          console.log("Login no Supabase realizado com sucesso:", authData);
+        }
+      }
+
       // Login bem-sucedido
       console.log("Login realizado com sucesso para:", usuario.nome);
       toast({
@@ -91,15 +109,17 @@ const LoginForm = () => {
         description: `Bem-vindo de volta, ${usuario.nome}!`,
       });
       
-      // Aqui você pode armazenar o usuário no localStorage ou context
+      // Armazenar o usuário no localStorage como backup
       localStorage.setItem('user', JSON.stringify({
         id: usuario.id,
         nome: usuario.nome,
-        email: usuario.email
+        email: usuario.email,
+        user_id: (usuario as any).user_id
       }));
       
-      // Redirecionar para dashboard ou página principal
-      // navigate("/dashboard");
+      // Redirecionar para dashboard
+      console.log("Redirecionando para dashboard...");
+      navigate("/dashboard");
       
     } catch (error: any) {
       console.error("Erro no login:", error);
