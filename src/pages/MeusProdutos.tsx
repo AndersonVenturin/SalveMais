@@ -26,6 +26,8 @@ const MeusProdutos = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    document.title = "Salve+ - Meus produtos";
+    
     carregarMeusProdutos();
   }, []);
 

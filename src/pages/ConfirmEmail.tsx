@@ -19,6 +19,8 @@ const ConfirmEmail = () => {
   const [userEmail, setUserEmail] = useState('');
 
   useEffect(() => {
+    document.title = "Salve+ - Confirmar email";
+    
     const confirmEmail = async () => {
       const token = searchParams.get('token');
       const userId = searchParams.get('userId');

@@ -72,6 +72,8 @@ const DetalheProduto = () => {
   const [municipiosDisponiveis, setMunicipiosDisponiveis] = useState<string[]>([]);
 
   useEffect(() => {
+    document.title = "Salve+ - Detalhes do produto";
+    
     // Get current user from localStorage
     const localUser = localStorage.getItem('user');
     if (localUser) {

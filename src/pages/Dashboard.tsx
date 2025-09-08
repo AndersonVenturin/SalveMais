@@ -12,6 +12,10 @@ const Dashboard = () => {
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
+    document.title = "Salve+ - Dashboard";
+  }, []);
+
+  useEffect(() => {
     const checkUser = async () => {
       // Verificar se há usuário no localStorage primeiro
       const localUser = localStorage.getItem('user');

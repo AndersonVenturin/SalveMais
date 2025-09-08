@@ -51,6 +51,8 @@ const BuscarProdutos = () => {
   const [municipiosDisponiveis, setMunicipiosDisponiveis] = useState<string[]>([]);
 
   useEffect(() => {
+    document.title = "Salve+ - Buscar produtos";
+    
     carregarDadosIniciais();
   }, []);
 

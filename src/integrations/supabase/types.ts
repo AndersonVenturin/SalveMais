@@ -202,6 +202,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      current_user_can_access_produto: {
+        Args: { produto_usuario_id: number }
+        Returns: boolean
+      }
+      current_user_can_access_produto_foto: {
+        Args: { foto_produto_id: number }
+        Returns: boolean
+      }
       migrate_existing_usuarios: {
         Args: Record<PropertyKey, never>
         Returns: undefined

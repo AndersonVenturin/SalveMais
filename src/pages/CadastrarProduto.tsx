@@ -75,6 +75,8 @@ const CadastrarProduto = () => {
   });
 
   useEffect(() => {
+    document.title = "Salve+ - Cadastrar produto";
+    
     const checkUser = async () => {
       console.log("CadastrarProduto: Verificando usuário...");
       
@@ -216,14 +218,15 @@ const CadastrarProduto = () => {
     console.log("CurrentUser:", currentUser);
     console.log("User (Supabase):", user);
     
-    // Verificar múltiplas fontes de usuário
+    // Usar a mesma lógica de autenticação do sistema
     let usuarioId = null;
     
+    // Primeira opção: usar currentUser se disponível
     if (currentUser && currentUser.id) {
       usuarioId = currentUser.id;
       console.log("Usando ID do currentUser:", usuarioId);
     } else {
-      // Tentar pegar do localStorage
+      // Segunda opção: buscar no localStorage
       const localUser = localStorage.getItem('user');
       if (localUser) {
         try {
@@ -232,6 +235,24 @@ const CadastrarProduto = () => {
           console.log("Usando ID do localStorage:", usuarioId);
         } catch (error) {
           console.error("Erro ao parsear localStorage:", error);
+        }
+      }
+    }
+    
+    // Terceira opção: tentar buscar via Supabase Auth se user_id estiver disponível
+    if (!usuarioId) {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (authUser) {
+        console.log("Tentando buscar usuário via Supabase Auth:", authUser.id);
+        const { data: userData, error: userError } = await supabase
+          .from('usuario')
+          .select('*')
+          .eq('user_id', authUser.id)
+          .maybeSingle();
+
+        if (userData && !userError) {
+          usuarioId = userData.id;
+          console.log("Usando ID do usuário via Supabase Auth:", usuarioId);
         }
       }
     }
