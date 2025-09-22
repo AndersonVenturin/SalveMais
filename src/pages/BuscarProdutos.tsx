@@ -147,6 +147,9 @@ const BuscarProdutos = () => {
       // Exclude own products
       query = query.neq('usuario_id', userData.id);
 
+      // Filter products with quantity greater than 0
+      query = query.gt('quantidade', 0);
+
       // Aplicar filtros
       if (nomeFiltro) {
         query = query.ilike('nome', `%${nomeFiltro}%`);

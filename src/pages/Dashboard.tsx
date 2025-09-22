@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Plus, Package, Search, LogOut, List, BarChart3 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { NotificationBell } from "@/components/NotificationBell";
 import salveLogo from "@/assets/salve-logo.png";
 
 const Dashboard = () => {
@@ -40,7 +41,7 @@ const Dashboard = () => {
       const { data: userData } = await supabase
         .from('usuario')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('email', user.email)
         .single();
       
       setCurrentUser(userData);
@@ -83,6 +84,7 @@ const Dashboard = () => {
               </div>
             </div>
             <div className="flex items-center gap-4">
+              <NotificationBell currentUser={currentUser} />
               <div className="text-right">
                 <p className="text-sm font-medium text-foreground">{currentUser.nome}</p>
                 <p className="text-xs text-muted-foreground">{currentUser.email}</p>

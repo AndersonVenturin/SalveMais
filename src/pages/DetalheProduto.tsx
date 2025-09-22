@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Package, MapPin, User, Clock, Edit, Save, X, Upload, Trash2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import salveLogo from "@/assets/salve-logo.png";
@@ -70,6 +71,13 @@ const DetalheProduto = () => {
   const [tiposProduto, setTiposProduto] = useState<TipoProduto[]>([]);
   const [tiposTransacao, setTiposTransacao] = useState<TipoTransacao[]>([]);
   const [municipiosDisponiveis, setMunicipiosDisponiveis] = useState<string[]>([]);
+  const [showSolicitacaoModal, setShowSolicitacaoModal] = useState(false);
+  const [showDoacaoModal, setShowDoacaoModal] = useState(false);
+  const [observacao, setObservacao] = useState('');
+  const [showTrocaModal, setShowTrocaModal] = useState(false);
+  const [observacaoTroca, setObservacaoTroca] = useState('');
+  const [produtoSelecionadoTroca, setProdutoSelecionadoTroca] = useState<number | null>(null);
+  const [meusProdutos, setMeusProdutos] = useState<ProdutoDetalhes[]>([]);
 
   useEffect(() => {
     document.title = "Salve+ - Detalhes do produto";
@@ -90,6 +98,7 @@ const DetalheProduto = () => {
   useEffect(() => {
     if (currentUser && id) {
       carregarProduto();
+      carregarMeusProdutos();
     }
   }, [currentUser, id]);
 
@@ -126,6 +135,30 @@ const DetalheProduto = () => {
 
     } catch (error) {
       console.error('Erro ao carregar dados iniciais:', error);
+    }
+  };
+
+  const carregarMeusProdutos = async () => {
+    if (!currentUser?.id) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('produto')
+        .select(`
+          *,
+          tipo_produto!inner (nome),
+          tipo_transacao!inner (nome),
+          usuario!inner (nome),
+          produto_foto (foto)
+        `)
+        .eq('usuario_id', currentUser.id)
+        .gte('quantidade', 1)
+        .order('nome');
+
+      if (error) throw error;
+      setMeusProdutos(data || []);
+    } catch (error) {
+      console.error('Erro ao carregar meus produtos:', error);
     }
   };
 
@@ -300,6 +333,272 @@ const DetalheProduto = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleSolicitarProduto = (tipoTransacaoId: number, tipoTransacaoNome: string) => {
+    if (tipoTransacaoNome.toLowerCase() === 'doação') {
+      // Close first modal and open donation modal
+      setShowSolicitacaoModal(false);
+      setShowDoacaoModal(true);
+      setObservacao('');
+    } else if (tipoTransacaoNome.toLowerCase() === 'troca') {
+      // Close first modal and open troca modal
+      setShowSolicitacaoModal(false);
+      setShowTrocaModal(true);
+      setObservacaoTroca('');
+      setProdutoSelecionadoTroca(null);
+    } else {
+      // For other transaction types, proceed directly
+      setShowSolicitacaoModal(false);
+      
+      toast({
+        title: "Solicitação enviada!",
+        description: `Sua solicitação de ${tipoTransacaoNome.toLowerCase()} foi enviada ao proprietário do produto.`,
+      });
+      
+      console.log('Solicitação de produto:', {
+        produtoId: produto?.id,
+        tipoTransacaoId,
+        tipoTransacaoNome,
+        usuarioOrigemId: currentUser?.id,
+        usuarioDestinoId: produto?.usuario_id,
+        observacao: ''
+      });
+    }
+  };
+
+  const handleConfirmarDoacao = async () => {
+    try {
+      // Check if the requested product is still available
+      const { data: produtoAtual, error } = await supabase
+        .from('produto')
+        .select('quantidade')
+        .eq('id', produto?.id)
+        .single();
+
+      if (error) throw error;
+
+      if (!produtoAtual || produtoAtual.quantidade < 1) {
+        toast({
+          title: "Produto não está mais disponível.",
+          variant: "destructive",
+        });
+        setShowDoacaoModal(false);
+        return;
+      }
+
+      // Get the pendente situation ID
+      const { data: situacaoPendentes, error: situacaoError } = await supabase
+        .from('situacao')
+        .select('id')
+        .ilike('nome', 'pendente');
+
+      if (situacaoError) throw situacaoError;
+
+      const situacaoPendente = situacaoPendentes?.[0];
+      if (!situacaoPendente) {
+        throw new Error('Situação pendente não encontrada');
+      }
+
+      // Check if there's already a pending request for this product by this user
+      const { data: existingRequest, error: existingError } = await supabase
+        .from('historico_transacao' as any)
+        .select('id')
+        .eq('produto_id', produto?.id)
+        .eq('usuario_origem_id', currentUser?.id)
+        .eq('situacao_id', situacaoPendente.id)
+        .maybeSingle();
+
+      if (existingError) throw existingError;
+
+      if (existingRequest) {
+        toast({
+          title: "Solicitação já existe",
+          description: "Já existe uma solicitação pendente para este produto. Aguarde o retorno do proprietário.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Insert into historico_transacao using direct SQL
+      const { error: historicoError } = await supabase
+        .from('historico_transacao' as any)
+        .insert({
+          produto_id: produto?.id,
+          tipo_transacao_id: tiposTransacao.find(t => t.nome.toLowerCase() === 'doação')?.id,
+          observacao: observacao,
+          produto_troca_id: null,
+          usuario_origem_id: currentUser?.id,
+          usuario_destino_id: produto?.usuario_id,
+          data_transacao: null,
+          data_cadastro: formatInTimeZone(new Date(), 'America/Sao_Paulo', 'yyyy-MM-dd HH:mm:ss'),
+          situacao_id: situacaoPendente.id,
+          observacao_resposta: null
+        });
+
+      if (historicoError) throw historicoError;
+
+      // Close modal and show success message
+      setShowDoacaoModal(false);
+      
+      toast({
+        title: "Solicitação enviada!",
+        description: "Sua solicitação de doação foi enviada ao proprietário do produto.",
+      });
+    } catch (error) {
+      console.error('Erro ao confirmar doação:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao processar solicitação de doação.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleConfirmarTroca = async () => {
+    if (!produtoSelecionadoTroca) {
+      toast({
+        title: "Erro",
+        description: "Selecione um produto para oferecer em troca.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // First check if the product being offered for exchange is still available
+      const { data: produtoOfertaAtual, error: ofertaError } = await supabase
+        .from('produto')
+        .select('quantidade')
+        .eq('id', produtoSelecionadoTroca)
+        .single();
+
+      if (ofertaError) throw ofertaError;
+
+      if (!produtoOfertaAtual || produtoOfertaAtual.quantidade < 1) {
+        toast({
+          title: "Produto oferecido em troca não está mais disponível.",
+          variant: "destructive",
+        });
+        // Don't close the dialog, let user select another product
+        return;
+      }
+
+      // Then check if the requested product is still available
+      const { data: produtoAtual, error } = await supabase
+        .from('produto')
+        .select('quantidade')
+        .eq('id', produto?.id)
+        .single();
+
+      if (error) throw error;
+
+      if (!produtoAtual || produtoAtual.quantidade < 1) {
+        toast({
+          title: "Produto não está mais disponível.",
+          variant: "destructive",
+        });
+        setShowTrocaModal(false);
+        return;
+      }
+
+      // Get the pendente situation ID
+      const { data: situacaoPendentes, error: situacaoError } = await supabase
+        .from('situacao')
+        .select('id')
+        .ilike('nome', 'pendente');
+
+      if (situacaoError) throw situacaoError;
+
+      const situacaoPendente = situacaoPendentes?.[0];
+      if (!situacaoPendente) {
+        throw new Error('Situação pendente não encontrada');
+      }
+
+      // Check if there's already a pending request for this product by this user
+      const { data: existingRequest, error: existingError } = await supabase
+        .from('historico_transacao' as any)
+        .select('id')
+        .eq('produto_id', produto?.id)
+        .eq('usuario_origem_id', currentUser?.id)
+        .eq('situacao_id', situacaoPendente.id)
+        .maybeSingle();
+
+      if (existingError) throw existingError;
+
+      if (existingRequest) {
+        toast({
+          title: "Solicitação já existe",
+          description: "Já existe uma solicitação pendente para este produto. Aguarde o retorno do proprietário.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Insert into historico_transacao
+      const { error: historicoError } = await supabase
+        .from('historico_transacao' as any)
+        .insert({
+          produto_id: produto?.id,
+          tipo_transacao_id: tiposTransacao.find(t => t.nome.toLowerCase() === 'troca')?.id,
+          observacao: observacaoTroca,
+          produto_troca_id: produtoSelecionadoTroca,
+          usuario_origem_id: currentUser?.id,
+          usuario_destino_id: produto?.usuario_id,
+          data_transacao: null,
+          data_cadastro: formatInTimeZone(new Date(), 'America/Sao_Paulo', 'yyyy-MM-dd HH:mm:ss'),
+          situacao_id: situacaoPendente.id,
+          observacao_resposta: null
+        });
+
+      if (historicoError) throw historicoError;
+
+      // Close modal and show success message
+      setShowTrocaModal(false);
+      
+      toast({
+        title: "Solicitação enviada!",
+        description: "Sua solicitação de troca foi enviada ao proprietário do produto.",
+      });
+    } catch (error) {
+      console.error('Erro ao confirmar troca:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao processar solicitação de troca.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSolicitarProdutoDirecto = () => {
+    if (!produto) return;
+    
+    const tipoTransacao = produto.tipo_transacao.nome.toLowerCase();
+    
+    if (tipoTransacao === 'doação') {
+      setShowDoacaoModal(true);
+      setObservacao('');
+    } else if (tipoTransacao === 'troca') {
+      setShowTrocaModal(true);
+      setObservacaoTroca('');
+      setProdutoSelecionadoTroca(null);
+    } else {
+      // For other transaction types, show a generic success message
+      toast({
+        title: "Solicitação enviada!",
+        description: `Sua solicitação de ${produto.tipo_transacao.nome.toLowerCase()} foi enviada ao proprietário do produto.`,
+      });
+    }
+  };
+
+  const handleCancelarSolicitacao = () => {
+    // Close all modals and reset states
+    setShowSolicitacaoModal(false);
+    setShowDoacaoModal(false);
+    setShowTrocaModal(false);
+    setObservacao('');
+    setObservacaoTroca('');
+    setProdutoSelecionadoTroca(null);
   };
 
   const handleBackNavigation = () => {
@@ -649,9 +948,132 @@ const DetalheProduto = () => {
               ) : (
                 !isOwner && isDisponivel && (
                   <div className="pt-4">
-                    <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+                    <Button 
+                      onClick={handleSolicitarProdutoDirecto} 
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                    >
                       Solicitar Produto
                     </Button>
+
+                    {/* Donation Modal */}
+                    <Dialog open={showDoacaoModal} onOpenChange={setShowDoacaoModal}>
+                      <DialogContent className="sm:max-w-[425px]">
+                        <DialogHeader>
+                          <DialogTitle className="text-center text-xl font-semibold">
+                            Solicitar Produto - Doação
+                          </DialogTitle>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="observacao" className="text-sm font-medium">
+                              Observação (opcional)
+                            </Label>
+                            <Textarea
+                              id="observacao"
+                              value={observacao}
+                              onChange={(e) => {
+                                const newValue = e.target.value;
+                                if (newValue.length <= 1000) {
+                                  setObservacao(newValue);
+                                }
+                              }}
+                              placeholder="Adicione uma observação sobre sua solicitação..."
+                              rows={4}
+                              className="resize-none"
+                            />
+                            <div className="text-xs text-muted-foreground text-right">
+                              {1000 - observacao.length} caracteres restantes
+                            </div>
+                          </div>
+                          <div className="flex gap-3 pt-2">
+                            <Button
+                              onClick={handleConfirmarDoacao}
+                              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                            >
+                              Confirmar
+                            </Button>
+                            <Button
+                              onClick={handleCancelarSolicitacao}
+                              variant="outline"
+                              className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50"
+                            >
+                              Cancelar
+                            </Button>
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+
+                    {/* Troca Modal */}
+                    <Dialog open={showTrocaModal} onOpenChange={setShowTrocaModal}>
+                      <DialogContent className="sm:max-w-[500px]">
+                        <DialogHeader>
+                          <DialogTitle className="text-center text-xl font-semibold">
+                            Solicitar Produto - Troca
+                          </DialogTitle>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                          <div className="space-y-3">
+                            <Label className="text-sm font-medium">
+                              Escolha um produto seu para oferecer em troca:
+                            </Label>
+                            <Select
+                              value={produtoSelecionadoTroca?.toString() || ''}
+                              onValueChange={(value) => setProdutoSelecionadoTroca(parseInt(value))}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione um produto para troca" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {meusProdutos.map((produto) => (
+                                  <SelectItem key={produto.id} value={produto.id.toString()}>
+                                    {produto.nome}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="observacaoTroca" className="text-sm font-medium">
+                              Observação (opcional)
+                            </Label>
+                            <Textarea
+                              id="observacaoTroca"
+                              value={observacaoTroca}
+                              onChange={(e) => {
+                                const newValue = e.target.value;
+                                if (newValue.length <= 1000) {
+                                  setObservacaoTroca(newValue);
+                                }
+                              }}
+                              placeholder="Adicione uma observação sobre sua solicitação de troca..."
+                              rows={4}
+                              className="resize-none"
+                            />
+                            <div className="text-xs text-muted-foreground text-right">
+                              {1000 - observacaoTroca.length} caracteres restantes
+                            </div>
+                          </div>
+
+                          <div className="flex gap-3 pt-2">
+                            <Button
+                              onClick={handleConfirmarTroca}
+                              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                            >
+                              Confirmar
+                            </Button>
+                            <Button
+                              onClick={handleCancelarSolicitacao}
+                              variant="outline"
+                              className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50"
+                            >
+                              Cancelar
+                            </Button>
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                   </div>
                 )
               )}

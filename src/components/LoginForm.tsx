@@ -83,8 +83,8 @@ const LoginForm = () => {
         return;
       }
 
-      // Fazer login real no Supabase Auth usando o user_id
-      if ((usuario as any).user_id) {
+      // Fazer login real no Supabase Auth se a tabela contém dados válidos
+      if (usuario) {
         console.log("Fazendo login no Supabase Auth...");
         
         // Fazer login no Supabase Auth usando signInWithPassword
@@ -113,8 +113,7 @@ const LoginForm = () => {
       localStorage.setItem('user', JSON.stringify({
         id: usuario.id,
         nome: usuario.nome,
-        email: usuario.email,
-        user_id: (usuario as any).user_id
+        email: usuario.email
       }));
       
       // Redirecionar para dashboard

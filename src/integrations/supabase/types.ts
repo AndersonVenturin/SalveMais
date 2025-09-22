@@ -173,7 +173,6 @@ export type Database = {
           preferencias: string | null
           senha: string
           token_ativo: boolean | null
-          user_id: string | null
         }
         Insert: {
           data_cadastro: string
@@ -183,7 +182,6 @@ export type Database = {
           preferencias?: string | null
           senha: string
           token_ativo?: boolean | null
-          user_id?: string | null
         }
         Update: {
           data_cadastro?: string
@@ -193,7 +191,6 @@ export type Database = {
           preferencias?: string | null
           senha?: string
           token_ativo?: boolean | null
-          user_id?: string | null
         }
         Relationships: []
       }

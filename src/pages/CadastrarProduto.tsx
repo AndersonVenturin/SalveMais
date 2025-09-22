@@ -110,7 +110,7 @@ const CadastrarProduto = () => {
       const { data: userData, error } = await supabase
         .from('usuario')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('email', user.email)
         .single();
       
       if (error) {
@@ -239,15 +239,15 @@ const CadastrarProduto = () => {
       }
     }
     
-    // Terceira opção: tentar buscar via Supabase Auth se user_id estiver disponível
+    // Terceira opção: tentar buscar via Supabase Auth se email estiver disponível
     if (!usuarioId) {
       const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (authUser) {
-        console.log("Tentando buscar usuário via Supabase Auth:", authUser.id);
+      if (authUser && authUser.email) {
+        console.log("Tentando buscar usuário via Supabase Auth:", authUser.email);
         const { data: userData, error: userError } = await supabase
           .from('usuario')
           .select('*')
-          .eq('user_id', authUser.id)
+          .eq('email', authUser.email)
           .maybeSingle();
 
         if (userData && !userError) {
