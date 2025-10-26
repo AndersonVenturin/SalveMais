@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Package, Search, LogOut, List, BarChart3 } from "lucide-react";
+import { Plus, Package, Search, LogOut, List, BarChart3, History } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -111,10 +111,10 @@ const Dashboard = () => {
         </div>
 
         {/* Menu Cards */}
-        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-5">
           {/* Cadastrar Produto */}
-          <Card className="hover:shadow-lg transition-all duration-200 cursor-pointer group border-2 hover:border-primary/20">
-            <CardHeader className="pb-4">
+          <Card className="hover:shadow-lg transition-all duration-200 cursor-pointer group border-2 hover:border-primary/20 flex flex-col">
+            <CardHeader className="pb-4 flex-1">
               <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
                 <Plus className="h-6 w-6 text-primary" />
               </div>
@@ -123,7 +123,7 @@ const Dashboard = () => {
                 Adicione um novo produto ao sistema com todas as informações necessárias
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               <Button 
                 className="w-full"
                 onClick={() => {
@@ -138,8 +138,8 @@ const Dashboard = () => {
           </Card>
 
           {/* Meus Produtos */}
-          <Card className="hover:shadow-lg transition-all duration-200 cursor-pointer group border-2 hover:border-primary/20">
-            <CardHeader className="pb-4">
+          <Card className="hover:shadow-lg transition-all duration-200 cursor-pointer group border-2 hover:border-primary/20 flex flex-col">
+            <CardHeader className="pb-4 flex-1">
               <div className="w-12 h-12 bg-secondary/50 rounded-lg flex items-center justify-center mb-4 group-hover:bg-secondary/70 transition-colors">
                 <Package className="h-6 w-6 text-secondary-foreground" />
               </div>
@@ -148,7 +148,7 @@ const Dashboard = () => {
                 Visualize, edite e gerencie todos os produtos que você cadastrou
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               <Button 
                 variant="secondary" 
                 className="w-full"
@@ -161,8 +161,8 @@ const Dashboard = () => {
           </Card>
 
           {/* Buscar Produtos */}
-          <Card className="hover:shadow-lg transition-all duration-200 cursor-pointer group border-2 hover:border-primary/20">
-            <CardHeader className="pb-4">
+          <Card className="hover:shadow-lg transition-all duration-200 cursor-pointer group border-2 hover:border-primary/20 flex flex-col">
+            <CardHeader className="pb-4 flex-1">
               <div className="w-12 h-12 bg-accent/50 rounded-lg flex items-center justify-center mb-4 group-hover:bg-accent/70 transition-colors">
                 <Search className="h-6 w-6 text-accent-foreground" />
               </div>
@@ -171,7 +171,7 @@ const Dashboard = () => {
                 Encontre produtos por nome, tipo, município ou transação
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               <Button 
                 variant="outline" 
                 className="w-full"
@@ -183,9 +183,32 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
+          {/* Histórico */}
+          <Card className="hover:shadow-lg transition-all duration-200 cursor-pointer group border-2 hover:border-primary/20 flex flex-col">
+            <CardHeader className="pb-4 flex-1">
+              <div className="w-12 h-12 bg-accent/50 rounded-lg flex items-center justify-center mb-4 group-hover:bg-accent/70 transition-colors">
+                <History className="h-6 w-6 text-accent-foreground" />
+              </div>
+              <CardTitle className="text-lg">Histórico</CardTitle>
+              <CardDescription>
+                Visualize o histórico de doações e trocas realizadas
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => navigate('/historico')}
+              >
+                <History className="h-4 w-4 mr-2" />
+                Ver Histórico
+              </Button>
+            </CardContent>
+          </Card>
+
           {/* Relatórios */}
-          <Card className="hover:shadow-lg transition-all duration-200 cursor-pointer group border-2 hover:border-primary/20">
-            <CardHeader className="pb-4">
+          <Card className="hover:shadow-lg transition-all duration-200 cursor-pointer group border-2 hover:border-primary/20 flex flex-col">
+            <CardHeader className="pb-4 flex-1">
               <div className="w-12 h-12 bg-accent/50 rounded-lg flex items-center justify-center mb-4 group-hover:bg-accent/70 transition-colors">
                 <BarChart3 className="h-6 w-6 text-accent-foreground" />
               </div>
@@ -194,7 +217,7 @@ const Dashboard = () => {
                 Visualize estatísticas e relatórios dos seus produtos cadastrados
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               <Button variant="outline" className="w-full">
                 <BarChart3 className="h-4 w-4 mr-2" />
                 Ver Relatórios

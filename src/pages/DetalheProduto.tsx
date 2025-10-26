@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Package, MapPin, User, Clock, Edit, Save, X, Upload, Trash2 } from "lucide-react";
+import { ArrowLeft, Package, MapPin, User, Clock, Edit, Save, X, Upload, Trash2, History } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import salveLogo from "@/assets/salve-logo.png";
@@ -42,6 +43,22 @@ interface ProdutoDetalhes {
   tipo_transacao: { nome: string };
   usuario: { nome: string };
   produto_foto: { foto: string }[];
+}
+
+interface HistoricoTransacao {
+  id: number;
+  tipo_transacao_id: number;
+  situacao_id: number;
+  usuario_origem_id: number;
+  usuario_destino_id: number;
+  data_cadastro: string;
+  data_transacao: string | null;
+  observacao: string | null;
+  observacao_resposta: string | null;
+  tipo_transacao_nome: string;
+  situacao_nome: string;
+  usuario_origem_nome: string;
+  usuario_destino_nome: string;
 }
 
 const DetalheProduto = () => {
@@ -78,6 +95,8 @@ const DetalheProduto = () => {
   const [observacaoTroca, setObservacaoTroca] = useState('');
   const [produtoSelecionadoTroca, setProdutoSelecionadoTroca] = useState<number | null>(null);
   const [meusProdutos, setMeusProdutos] = useState<ProdutoDetalhes[]>([]);
+  const [historicoTransacoes, setHistoricoTransacoes] = useState<HistoricoTransacao[]>([]);
+  const [loadingHistorico, setLoadingHistorico] = useState(false);
 
   useEffect(() => {
     document.title = "Salve+ - Detalhes do produto";
@@ -101,6 +120,12 @@ const DetalheProduto = () => {
       carregarMeusProdutos();
     }
   }, [currentUser, id]);
+
+  useEffect(() => {
+    if (isOwner && id) {
+      carregarHistoricoTransacoes();
+    }
+  }, [isOwner, id]);
 
   useEffect(() => {
     const loadMunicipios = async () => {
@@ -159,6 +184,81 @@ const DetalheProduto = () => {
       setMeusProdutos(data || []);
     } catch (error) {
       console.error('Erro ao carregar meus produtos:', error);
+    }
+  };
+
+  const carregarHistoricoTransacoes = async () => {
+    if (!id) return;
+    
+    setLoadingHistorico(true);
+    try {
+      const { data: historicoData, error } = await (supabase
+        .from('historico_transacao' as any)
+        .select('id, tipo_transacao_id, situacao_id, usuario_origem_id, usuario_destino_id, data_cadastro, data_transacao, observacao, observacao_resposta')
+        .eq('produto_id', parseInt(id))
+        .order('id', { ascending: false }) as any);
+
+      if (error) throw error;
+
+      // Enriquecer os dados com informações relacionadas
+      const historicoEnriquecido: HistoricoTransacao[] = await Promise.all(
+        (historicoData || []).map(async (item: any) => {
+          // Buscar tipo de transação
+          const { data: tipoTransacao } = await supabase
+            .from('tipo_transacao')
+            .select('nome')
+            .eq('id', item.tipo_transacao_id)
+            .maybeSingle();
+
+          // Buscar situação
+          const { data: situacao } = await supabase
+            .from('situacao')
+            .select('nome')
+            .eq('id', item.situacao_id)
+            .maybeSingle();
+
+          // Buscar usuário origem
+          const { data: usuarioOrigem } = await supabase
+            .from('usuario')
+            .select('nome')
+            .eq('id', item.usuario_origem_id)
+            .maybeSingle();
+
+          // Buscar usuário destino
+          const { data: usuarioDestino } = await supabase
+            .from('usuario')
+            .select('nome')
+            .eq('id', item.usuario_destino_id)
+            .maybeSingle();
+
+          return {
+            id: item.id,
+            tipo_transacao_id: item.tipo_transacao_id,
+            situacao_id: item.situacao_id,
+            usuario_origem_id: item.usuario_origem_id,
+            usuario_destino_id: item.usuario_destino_id,
+            data_cadastro: item.data_cadastro,
+            data_transacao: item.data_transacao,
+            observacao: item.observacao,
+            observacao_resposta: item.observacao_resposta,
+            tipo_transacao_nome: tipoTransacao?.nome || '-',
+            situacao_nome: situacao?.nome || '-',
+            usuario_origem_nome: usuarioOrigem?.nome || '-',
+            usuario_destino_nome: usuarioDestino?.nome || '-',
+          };
+        })
+      );
+
+      setHistoricoTransacoes(historicoEnriquecido);
+    } catch (error) {
+      console.error('Erro ao carregar histórico de transações:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar histórico de transações",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingHistorico(false);
     }
   };
 
@@ -667,7 +767,17 @@ const DetalheProduto = () => {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">
-          <Card>
+          {isOwner ? (
+            // Owner view with tabs
+            <Tabs defaultValue="detalhes" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="detalhes">Detalhes</TabsTrigger>
+                <TabsTrigger value="historico">Histórico</TabsTrigger>
+              </TabsList>
+
+              {/* Detalhes Tab */}
+              <TabsContent value="detalhes">
+                <Card>
             {/* Product Image */}
             {isOwner && isEditing ? (
               <div className="w-full p-6">
@@ -1079,6 +1189,336 @@ const DetalheProduto = () => {
               )}
             </CardContent>
           </Card>
+              </TabsContent>
+
+              {/* Histórico Tab */}
+              <TabsContent value="historico">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-xl">Histórico Completo de Transações</CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Todas as transações relacionadas a este produto onde você participou
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    {loadingHistorico ? (
+                      <div className="text-center py-8">
+                        <Package className="h-8 w-8 animate-spin mx-auto mb-4" />
+                        <p className="text-muted-foreground">Carregando histórico...</p>
+                      </div>
+                    ) : historicoTransacoes.length === 0 ? (
+                      <div className="text-center py-8">
+                        <p className="text-muted-foreground">Nenhuma transação registrada para este produto.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {historicoTransacoes.map((transacao) => (
+                          <Card key={transacao.id} className="border bg-card">
+                            <CardContent className="pt-6">
+                              <div className="grid grid-cols-2 gap-6">
+                                {/* Row 1: Tipo de Transação e Situação */}
+                                <div>
+                                  <p className="text-sm text-muted-foreground mb-1">Tipo de Transação</p>
+                                  <p className="font-medium">{transacao.tipo_transacao_nome}</p>
+                                </div>
+                                <div>
+                                  <p className="text-sm text-muted-foreground mb-1">Situação</p>
+                                  <Badge variant={
+                                    transacao.situacao_nome.toLowerCase() === 'pendente' ? 'secondary' :
+                                    transacao.situacao_nome.toLowerCase() === 'aprovada' || transacao.situacao_nome.toLowerCase() === 'concluída' ? 'default' :
+                                    'destructive'
+                                  }>
+                                    {transacao.situacao_nome}
+                                  </Badge>
+                                </div>
+
+                                {/* Row 2: Usuário Origem e Usuário Destino */}
+                                <div>
+                                  <p className="text-sm text-muted-foreground mb-1">Usuário Origem</p>
+                                  <p className="font-medium">{transacao.usuario_origem_nome}</p>
+                                </div>
+                                <div>
+                                  <p className="text-sm text-muted-foreground mb-1">Usuário Destino</p>
+                                  <p className="font-medium">{transacao.usuario_destino_nome}</p>
+                                </div>
+
+                                {/* Row 3: Data de Cadastro e Data de Transação */}
+                                <div>
+                                  <p className="text-sm text-muted-foreground mb-1">Data de Cadastro</p>
+                                  <p className="font-medium">
+                                    {formatInTimeZone(new Date(transacao.data_cadastro), 'America/Sao_Paulo', 'dd/MM/yyyy HH:mm')}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-sm text-muted-foreground mb-1">Data de Transação</p>
+                                  <p className="font-medium">
+                                    {transacao.data_transacao 
+                                      ? formatInTimeZone(new Date(transacao.data_transacao), 'America/Sao_Paulo', 'dd/MM/yyyy HH:mm')
+                                      : '-'
+                                    }
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Observação (full width) */}
+                              {transacao.observacao && (
+                                <div className="mt-4">
+                                  <p className="text-sm text-muted-foreground mb-1">Observação</p>
+                                  <p className="font-medium">{transacao.observacao}</p>
+                                </div>
+                              )}
+
+                              {/* Resposta (full width) */}
+                              {transacao.observacao_resposta && (
+                                <div className="mt-4">
+                                  <p className="text-sm text-muted-foreground mb-1">Resposta</p>
+                                  <p className="font-medium">{transacao.observacao_resposta}</p>
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          ) : (
+            // Non-owner view without tabs
+            <Card>
+              {/* Product Image */}
+              {(produto?.produto_foto && produto.produto_foto.length > 0) ? (
+                <div className="w-full flex justify-center overflow-hidden rounded-t-lg">
+                  <img
+                    src={produto.produto_foto[0].foto}
+                    alt={produto.nome}
+                    className="w-[70%] h-auto object-contain max-h-80"
+                  />
+                </div>
+              ) : (
+                <div className="w-full h-64 bg-muted rounded-t-lg flex items-center justify-center">
+                  <Package className="h-16 w-16 text-muted-foreground" />
+                </div>
+              )}
+
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <CardTitle className="text-2xl">{produto.nome}</CardTitle>
+                  </div>
+                  <Badge 
+                    variant={isDisponivel ? "default" : "destructive"}
+                    className={isDisponivel ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}
+                  >
+                    {isDisponivel ? "Disponível" : "Indisponível"}
+                  </Badge>
+                </div>
+              </CardHeader>
+
+              <CardContent className="space-y-6">
+                {/* Description */}
+                <div>
+                  <h3 className="font-semibold mb-2">Descrição</h3>
+                  <p className="text-muted-foreground">{produto.descricao}</p>
+                </div>
+
+                {/* Product Details */}
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label className="font-medium">Tipo de Produto</Label>
+                    <div className="flex items-center gap-2">
+                      <Package className="h-4 w-4 text-muted-foreground" />
+                      <span>{produto.tipo_produto.nome}</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="font-medium">Tipo de Transação</Label>
+                    <div className="flex items-center gap-2">
+                      <span>{produto.tipo_transacao.nome}</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="font-medium">Estado (UF)</Label>
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
+                      <span>{produto.uf}</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="font-medium">Município</Label>
+                    <div className="flex items-center gap-2">
+                      <span>{produto.municipio}</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="font-medium">Quantidade</Label>
+                    <div className="flex items-center gap-2">
+                      <span>{produto.quantidade}</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="font-medium">Cadastrado por</Label>
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      <span>{produto.usuario.nome}</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="font-medium">Data do Cadastro</Label>
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <span>{formatInTimeZone(new Date(produto.data_insercao), 'America/Sao_Paulo', 'dd/MM/yyyy HH:mm')}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Contact Info */}
+                <div className="space-y-2">
+                  <Label className="font-medium">Contato</Label>
+                  <p className="text-muted-foreground">{produto.contato}</p>
+                </div>
+
+                {/* Action Button for non-owner */}
+                {isDisponivel && (
+                  <div className="pt-4">
+                    <Button 
+                      onClick={handleSolicitarProdutoDirecto} 
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      Solicitar Produto
+                    </Button>
+
+                    {/* Donation Modal */}
+                    <Dialog open={showDoacaoModal} onOpenChange={setShowDoacaoModal}>
+                      <DialogContent className="sm:max-w-[425px]">
+                        <DialogHeader>
+                          <DialogTitle className="text-center text-xl font-semibold">
+                            Solicitar Produto - Doação
+                          </DialogTitle>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="observacao" className="text-sm font-medium">
+                              Observação (opcional)
+                            </Label>
+                            <Textarea
+                              id="observacao"
+                              value={observacao}
+                              onChange={(e) => {
+                                const newValue = e.target.value;
+                                if (newValue.length <= 1000) {
+                                  setObservacao(newValue);
+                                }
+                              }}
+                              placeholder="Adicione uma observação sobre sua solicitação..."
+                              rows={4}
+                              className="resize-none"
+                            />
+                            <div className="text-xs text-muted-foreground text-right">
+                              {1000 - observacao.length} caracteres restantes
+                            </div>
+                          </div>
+                          <div className="flex gap-3 pt-2">
+                            <Button
+                              onClick={handleConfirmarDoacao}
+                              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                            >
+                              Confirmar
+                            </Button>
+                            <Button
+                              onClick={handleCancelarSolicitacao}
+                              variant="outline"
+                              className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50"
+                            >
+                              Cancelar
+                            </Button>
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+
+                    {/* Troca Modal */}
+                    <Dialog open={showTrocaModal} onOpenChange={setShowTrocaModal}>
+                      <DialogContent className="sm:max-w-[500px]">
+                        <DialogHeader>
+                          <DialogTitle className="text-center text-xl font-semibold">
+                            Solicitar Produto - Troca
+                          </DialogTitle>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                          <div className="space-y-3">
+                            <Label className="text-sm font-medium">
+                              Escolha um produto seu para oferecer em troca:
+                            </Label>
+                            <Select
+                              value={produtoSelecionadoTroca?.toString() || ''}
+                              onValueChange={(value) => setProdutoSelecionadoTroca(parseInt(value))}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione um produto para troca" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {meusProdutos.map((produto) => (
+                                  <SelectItem key={produto.id} value={produto.id.toString()}>
+                                    {produto.nome}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="observacaoTroca" className="text-sm font-medium">
+                              Observação (opcional)
+                            </Label>
+                            <Textarea
+                              id="observacaoTroca"
+                              value={observacaoTroca}
+                              onChange={(e) => {
+                                const newValue = e.target.value;
+                                if (newValue.length <= 1000) {
+                                  setObservacaoTroca(newValue);
+                                }
+                              }}
+                              placeholder="Adicione uma observação sobre sua solicitação de troca..."
+                              rows={4}
+                              className="resize-none"
+                            />
+                            <div className="text-xs text-muted-foreground text-right">
+                              {1000 - observacaoTroca.length} caracteres restantes
+                            </div>
+                          </div>
+
+                          <div className="flex gap-3 pt-2">
+                            <Button
+                              onClick={handleConfirmarTroca}
+                              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                            >
+                              Confirmar
+                            </Button>
+                            <Button
+                              onClick={handleCancelarSolicitacao}
+                              variant="outline"
+                              className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50"
+                            >
+                              Cancelar
+                            </Button>
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
       </main>
     </div>
