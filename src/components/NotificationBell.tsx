@@ -22,6 +22,9 @@ export const NotificationBell = ({ currentUser }: NotificationBellProps) => {
 
     const fetchPendingRequests = async () => {
       try {
+        // Ensure RLS context for current user
+        await supabase.rpc('set_user_context', { user_email: currentUser.email });
+
         // Get situation IDs
         const { data: allSituacoes, error: situacaoError } = await supabase
           .from('situacao')
@@ -111,6 +114,18 @@ export const NotificationBell = ({ currentUser }: NotificationBellProps) => {
         },
         () => {
           // A request was updated (e.g., responded). Recalculate counts.
+          fetchPendingRequests();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notificacao_lida'
+        },
+        () => {
+          // A notification was marked as read. Recalculate counts.
           fetchPendingRequests();
         }
       )

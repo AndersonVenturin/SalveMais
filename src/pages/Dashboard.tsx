@@ -85,10 +85,13 @@ const Dashboard = () => {
             </div>
             <div className="flex items-center gap-4">
               <NotificationBell currentUser={currentUser} />
-              <div className="text-right">
-                <p className="text-sm font-medium text-foreground">{currentUser.nome}</p>
+              <button 
+                onClick={() => navigate(`/perfil-usuario/${currentUser.id}`)}
+                className="text-right hover:opacity-80 transition-opacity"
+              >
+                <p className="text-sm font-medium text-foreground hover:underline">{currentUser.nome}</p>
                 <p className="text-xs text-muted-foreground">{currentUser.email}</p>
-              </div>
+              </button>
               <Button variant="outline" size="sm" onClick={handleLogout}>
                 <LogOut className="h-4 w-4 mr-2" />
                 Sair
@@ -103,7 +106,14 @@ const Dashboard = () => {
         {/* Welcome Section */}
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-foreground mb-2">
-            Bem-vindo, {currentUser.nome}!
+            Bem-vindo,{' '}
+            <button
+              onClick={() => navigate(`/perfil-usuario/${currentUser.id}`)}
+              className="text-primary hover:underline"
+            >
+              {currentUser.nome}
+            </button>
+            !
           </h2>
           <p className="text-muted-foreground">
             Escolha uma das opções abaixo para gerenciar seus produtos.

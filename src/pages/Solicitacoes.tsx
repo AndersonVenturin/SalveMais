@@ -182,6 +182,9 @@ const Solicitacoes = () => {
         // Check which sent requests are already read
         let unreadSentRequestIds: number[] = [];
         if (sentRequests && sentRequests.length > 0) {
+          // Ensure RLS context for SELECT on notificacao_lida
+          await supabase.rpc('set_user_context', { user_email: currentUser.email });
+
           const { data: readNotifications, error: readError } = await (supabase as any)
             .from('notificacao_lida')
             .select('historico_transacao_id')
@@ -257,6 +260,11 @@ const Solicitacoes = () => {
         
         if (unreadSentTransactionIds.length > 0) {
           await markNotificationsAsRead(unreadSentTransactionIds);
+          
+          // Wait a bit for the database to process the inserts, then remove from list
+          setTimeout(() => {
+            setSolicitacoesEnviadas([]);
+          }, 500);
         }
       } catch (error) {
         console.error('Error fetching requests:', error);
@@ -275,6 +283,9 @@ const Solicitacoes = () => {
 
   const markNotificationsAsRead = async (transactionIds: number[]) => {
     try {
+      // Set user context for RLS
+      await supabase.rpc('set_user_context', { user_email: currentUser.email });
+
       // Insert read notifications for each transaction
       const readNotifications = transactionIds.map(transactionId => ({
         usuario_id: currentUser.id,
@@ -493,7 +504,15 @@ const Solicitacoes = () => {
                             </CardTitle>
                             <CardDescription className="mt-2">
                               <div className="space-y-1">
-                                <p><strong>Solicitante:</strong> {solicitacao.usuario_origem.nome}</p>
+                                <p>
+                                  <strong>Solicitante:</strong>{' '}
+                                  <button
+                                    onClick={() => navigate(`/perfil-usuario/${solicitacao.usuario_origem_id}`)}
+                                    className="text-primary hover:underline font-medium"
+                                  >
+                                    {solicitacao.usuario_origem.nome}
+                                  </button>
+                                </p>
                                 <p><strong>Tipo:</strong> {solicitacao.tipo_transacao.nome}</p>
                                 <p><strong>Data:</strong> {format(new Date(solicitacao.data_cadastro), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}</p>
                               </div>
@@ -665,7 +684,15 @@ const Solicitacoes = () => {
                             </CardTitle>
                             <CardDescription className="mt-2">
                               <div className="space-y-1">
-                                <p><strong>Proprietário:</strong> {solicitacao.usuario_destino?.nome}</p>
+                                <p>
+                                  <strong>Proprietário:</strong>{' '}
+                                  <button
+                                    onClick={() => navigate(`/perfil-usuario/${solicitacao.usuario_destino_id}`)}
+                                    className="text-primary hover:underline font-medium"
+                                  >
+                                    {solicitacao.usuario_destino?.nome}
+                                  </button>
+                                </p>
                                 <p><strong>Tipo:</strong> {solicitacao.tipo_transacao.nome}</p>
                                 <p><strong>Status:</strong> {solicitacao.situacao.nome}</p>
                                 <p><strong>Data da solicitação:</strong> {format(new Date(solicitacao.data_cadastro), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}</p>

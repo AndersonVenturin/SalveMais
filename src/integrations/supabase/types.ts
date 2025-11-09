@@ -14,6 +14,216 @@ export type Database = {
   }
   public: {
     Tables: {
+      avaliacao_produto: {
+        Row: {
+          avaliacao: number
+          data_cadastro: string
+          data_transacao: string
+          historico_transacao_id: number
+          id: number
+          observacao: string | null
+          produto_id: number
+          usuario_destino_id: number
+          usuario_origem_id: number
+        }
+        Insert: {
+          avaliacao: number
+          data_cadastro?: string
+          data_transacao: string
+          historico_transacao_id: number
+          id?: never
+          observacao?: string | null
+          produto_id: number
+          usuario_destino_id: number
+          usuario_origem_id: number
+        }
+        Update: {
+          avaliacao?: number
+          data_cadastro?: string
+          data_transacao?: string
+          historico_transacao_id?: number
+          id?: never
+          observacao?: string | null
+          produto_id?: number
+          usuario_destino_id?: number
+          usuario_origem_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avaliacao_produto_historico_transacao_id_fkey"
+            columns: ["historico_transacao_id"]
+            isOneToOne: false
+            referencedRelation: "historico_transacao"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avaliacao_produto_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produto"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avaliacao_produto_usuario_destino_id_fkey"
+            columns: ["usuario_destino_id"]
+            isOneToOne: false
+            referencedRelation: "usuario"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avaliacao_produto_usuario_origem_id_fkey"
+            columns: ["usuario_origem_id"]
+            isOneToOne: false
+            referencedRelation: "usuario"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      avaliacao_usuario: {
+        Row: {
+          avaliacao: number
+          data_cadastro: string
+          historico_transacao_id: number
+          id: number
+          observacao: string | null
+          usuario_avaliado_id: number
+          usuario_origem_id: number
+        }
+        Insert: {
+          avaliacao: number
+          data_cadastro?: string
+          historico_transacao_id: number
+          id?: never
+          observacao?: string | null
+          usuario_avaliado_id: number
+          usuario_origem_id: number
+        }
+        Update: {
+          avaliacao?: number
+          data_cadastro?: string
+          historico_transacao_id?: number
+          id?: never
+          observacao?: string | null
+          usuario_avaliado_id?: number
+          usuario_origem_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avaliacao_usuario_historico_transacao_id_fkey"
+            columns: ["historico_transacao_id"]
+            isOneToOne: false
+            referencedRelation: "historico_transacao"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avaliacao_usuario_usuario_avaliado_id_fkey"
+            columns: ["usuario_avaliado_id"]
+            isOneToOne: false
+            referencedRelation: "usuario"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avaliacao_usuario_usuario_origem_id_fkey"
+            columns: ["usuario_origem_id"]
+            isOneToOne: false
+            referencedRelation: "usuario"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      historico_transacao: {
+        Row: {
+          data_cadastro: string
+          data_transacao: string | null
+          id: number
+          observacao: string | null
+          observacao_resposta: string | null
+          produto_id: number
+          produto_troca_id: number | null
+          situacao_id: number
+          tipo_transacao_id: number
+          usuario_destino_id: number
+          usuario_origem_id: number
+        }
+        Insert: {
+          data_cadastro: string
+          data_transacao?: string | null
+          id?: number
+          observacao?: string | null
+          observacao_resposta?: string | null
+          produto_id: number
+          produto_troca_id?: number | null
+          situacao_id: number
+          tipo_transacao_id: number
+          usuario_destino_id: number
+          usuario_origem_id: number
+        }
+        Update: {
+          data_cadastro?: string
+          data_transacao?: string | null
+          id?: number
+          observacao?: string | null
+          observacao_resposta?: string | null
+          produto_id?: number
+          produto_troca_id?: number | null
+          situacao_id?: number
+          tipo_transacao_id?: number
+          usuario_destino_id?: number
+          usuario_origem_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "historico_transacao_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produto"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historico_transacao_situacao_id_fkey"
+            columns: ["situacao_id"]
+            isOneToOne: false
+            referencedRelation: "situacao"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historico_transacao_tipo_transacao_id_fkey"
+            columns: ["tipo_transacao_id"]
+            isOneToOne: false
+            referencedRelation: "tipo_transacao"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notificacao_lida: {
+        Row: {
+          data_leitura: string
+          historico_transacao_id: number
+          id: number
+          usuario_id: number
+        }
+        Insert: {
+          data_leitura?: string
+          historico_transacao_id: number
+          id?: number
+          usuario_id: number
+        }
+        Update: {
+          data_leitura?: string
+          historico_transacao_id?: number
+          id?: number
+          usuario_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_notificacao_lida_historico_transacao"
+            columns: ["historico_transacao_id"]
+            isOneToOne: false
+            referencedRelation: "historico_transacao"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       produto: {
         Row: {
           contato: string
@@ -199,6 +409,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_avaliacao: {
+        Args: {
+          p_avaliacao_produto: number
+          p_avaliacao_usuario: number
+          p_data_transacao: string
+          p_historico_transacao_id: number
+          p_observacao_produto: string
+          p_observacao_usuario: string
+          p_produto_id: number
+          p_user_email: string
+          p_usuario_destino_id: number
+          p_usuario_origem_id: number
+        }
+        Returns: undefined
+      }
       current_user_can_access_produto: {
         Args: { produto_usuario_id: number }
         Returns: boolean
@@ -207,10 +432,26 @@ export type Database = {
         Args: { foto_produto_id: number }
         Returns: boolean
       }
-      migrate_existing_usuarios: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
+      get_avaliacoes_usuario: {
+        Args: { p_historico_ids: number[]; p_user_email: string }
+        Returns: {
+          avaliacao: number
+          data_cadastro: string
+          historico_transacao_id: number
+          id: number
+          observacao: string | null
+          usuario_avaliado_id: number
+          usuario_origem_id: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "avaliacao_usuario"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
+      migrate_existing_usuarios: { Args: never; Returns: undefined }
+      set_user_context: { Args: { user_email: string }; Returns: undefined }
       verify_user_login: {
         Args: { user_email: string }
         Returns: {

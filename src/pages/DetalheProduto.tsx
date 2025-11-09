@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Package, MapPin, User, Clock, Edit, Save, X, Upload, Trash2, History } from "lucide-react";
+import { ArrowLeft, Package, MapPin, User, Clock, Edit, Save, X, Upload, Trash2, History, Star } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +16,16 @@ import salveLogo from "@/assets/salve-logo.png";
 import { ufs, fetchMunicipios } from "@/lib/location-data";
 import imageCompression from 'browser-image-compression';
 import { formatInTimeZone, toZonedTime } from "date-fns-tz";
+import { StarRating } from "@/components/StarRating";
+
+interface AvaliacaoProduto {
+  id: number;
+  avaliacao: number;
+  observacao: string | null;
+  data_cadastro: string;
+  usuario_origem_id: number;
+  usuario_origem_nome?: string;
+}
 
 interface TipoProduto {
   id: number;
@@ -97,6 +107,8 @@ const DetalheProduto = () => {
   const [meusProdutos, setMeusProdutos] = useState<ProdutoDetalhes[]>([]);
   const [historicoTransacoes, setHistoricoTransacoes] = useState<HistoricoTransacao[]>([]);
   const [loadingHistorico, setLoadingHistorico] = useState(false);
+  const [avaliacoesProduto, setAvaliacoesProduto] = useState<AvaliacaoProduto[]>([]);
+  const [loadingAvaliacoes, setLoadingAvaliacoes] = useState(false);
 
   useEffect(() => {
     document.title = "Salve+ - Detalhes do produto";
@@ -120,6 +132,13 @@ const DetalheProduto = () => {
       carregarMeusProdutos();
     }
   }, [currentUser, id]);
+
+  useEffect(() => {
+    if (id) {
+      console.log('[Avaliações] useEffect disparado para id:', id);
+      carregarAvaliacoesProduto();
+    }
+  }, [id]);
 
   useEffect(() => {
     if (isOwner && id) {
@@ -184,6 +203,45 @@ const DetalheProduto = () => {
       setMeusProdutos(data || []);
     } catch (error) {
       console.error('Erro ao carregar meus produtos:', error);
+    }
+  };
+
+  const carregarAvaliacoesProduto = async () => {
+    if (!id) return;
+    
+    console.log('[Avaliações] Iniciando carga para produto_id:', id);
+    setLoadingAvaliacoes(true);
+    try {
+      const { data, error } = await supabase
+        .from('avaliacao_produto')
+        .select('*')
+        .eq('produto_id', parseInt(id))
+        .order('data_cadastro', { ascending: false });
+
+      if (error) throw error;
+      console.log('[Avaliações] Recebidas', data?.length || 0, 'avaliações:', data);
+
+      // Enriquecer com nome dos usuários
+      const avaliacoesEnriquecidas = await Promise.all(
+        (data || []).map(async (avaliacao: any) => {
+          const { data: usuario } = await supabase
+            .from('usuario')
+            .select('nome')
+            .eq('id', avaliacao.usuario_origem_id)
+            .maybeSingle();
+
+          return {
+            ...avaliacao,
+            usuario_origem_nome: usuario?.nome || 'Anônimo'
+          };
+        })
+      );
+
+      setAvaliacoesProduto(avaliacoesEnriquecidas);
+    } catch (error) {
+      console.error('Erro ao carregar avaliações:', error);
+    } finally {
+      setLoadingAvaliacoes(false);
     }
   };
 
@@ -1010,7 +1068,12 @@ const DetalheProduto = () => {
                   <Label className="font-medium">Cadastrado por</Label>
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4 text-muted-foreground" />
-                    <span>{produto.usuario.nome}</span>
+                    <button
+                      onClick={() => navigate(`/perfil-usuario/${produto.usuario_id}`)}
+                      className="text-primary hover:underline font-medium"
+                    >
+                      {produto.usuario.nome}
+                    </button>
                   </div>
                 </div>
 
@@ -1186,6 +1249,53 @@ const DetalheProduto = () => {
                     </Dialog>
                   </div>
                 )
+              )}
+
+              {/* Avaliações do Produto */}
+              {!isEditing && (
+                <div className="space-y-4 pt-4 border-t">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-lg">Avaliações do Produto ({avaliacoesProduto.length})</h3>
+                    {avaliacoesProduto.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
+                        <span className="font-semibold">
+                          Nota: {(avaliacoesProduto.reduce((acc, av) => acc + av.avaliacao, 0) / avaliacoesProduto.length).toFixed(1)}/5
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  {loadingAvaliacoes ? (
+                    <div className="text-center py-4">
+                      <p className="text-muted-foreground">Carregando avaliações...</p>
+                    </div>
+                  ) : avaliacoesProduto.length === 0 ? (
+                    <div className="text-center py-4">
+                      <p className="text-muted-foreground">Este produto ainda não possui avaliações.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {avaliacoesProduto.map((avaliacao) => (
+                        <Card key={avaliacao.id} className="border bg-muted/30">
+                          <CardContent className="pt-4">
+                            <div className="flex items-start justify-between mb-2">
+                              <div>
+                                <p className="font-medium text-sm">{avaliacao.usuario_origem_nome}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {formatInTimeZone(new Date(avaliacao.data_cadastro), 'America/Sao_Paulo', 'dd/MM/yyyy')}
+                                </p>
+                              </div>
+                              <StarRating rating={avaliacao.avaliacao} onRatingChange={() => {}} readonly={true} />
+                            </div>
+                            {avaliacao.observacao && (
+                              <p className="text-sm text-muted-foreground mt-2">{avaliacao.observacao}</p>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
             </CardContent>
           </Card>
@@ -1366,7 +1476,12 @@ const DetalheProduto = () => {
                     <Label className="font-medium">Cadastrado por</Label>
                     <div className="flex items-center gap-2">
                       <User className="h-4 w-4 text-muted-foreground" />
-                      <span>{produto.usuario.nome}</span>
+                      <button
+                        onClick={() => navigate(`/perfil-usuario/${produto.usuario_id}`)}
+                        className="text-primary hover:underline font-medium"
+                      >
+                        {produto.usuario.nome}
+                      </button>
                     </div>
                   </div>
 
@@ -1516,6 +1631,51 @@ const DetalheProduto = () => {
                     </Dialog>
                   </div>
                 )}
+
+                {/* Avaliações do Produto */}
+                <div className="space-y-4 pt-4 border-t">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-lg">Avaliações do Produto ({avaliacoesProduto.length})</h3>
+                    {avaliacoesProduto.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
+                        <span className="font-semibold">
+                          Nota: {(avaliacoesProduto.reduce((acc, av) => acc + av.avaliacao, 0) / avaliacoesProduto.length).toFixed(1)}/5
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  {loadingAvaliacoes ? (
+                    <div className="text-center py-4">
+                      <p className="text-muted-foreground">Carregando avaliações...</p>
+                    </div>
+                  ) : avaliacoesProduto.length === 0 ? (
+                    <div className="text-center py-4">
+                      <p className="text-muted-foreground">Este produto ainda não possui avaliações.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {avaliacoesProduto.map((avaliacao) => (
+                        <Card key={avaliacao.id} className="border bg-muted/30">
+                          <CardContent className="pt-4">
+                            <div className="flex items-start justify-between mb-2">
+                              <div>
+                                <p className="font-medium text-sm">{avaliacao.usuario_origem_nome}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {formatInTimeZone(new Date(avaliacao.data_cadastro), 'America/Sao_Paulo', 'dd/MM/yyyy')}
+                                </p>
+                              </div>
+                              <StarRating rating={avaliacao.avaliacao} onRatingChange={() => {}} readonly={true} />
+                            </div>
+                            {avaliacao.observacao && (
+                              <p className="text-sm text-muted-foreground mt-2">{avaliacao.observacao}</p>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
           )}
