@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Package, Search, LogOut, List, BarChart3, History } from "lucide-react";
+import { Plus, Package, Search, LogOut, List, BarChart3, History, Leaf } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -216,21 +216,25 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          {/* Relatórios */}
+          {/* Impacto Ambiental */}
           <Card className="hover:shadow-lg transition-all duration-200 cursor-pointer group border-2 hover:border-primary/20 flex flex-col">
             <CardHeader className="pb-4 flex-1">
               <div className="w-12 h-12 bg-accent/50 rounded-lg flex items-center justify-center mb-4 group-hover:bg-accent/70 transition-colors">
-                <BarChart3 className="h-6 w-6 text-accent-foreground" />
+                <Leaf className="h-6 w-6 text-accent-foreground" />
               </div>
-              <CardTitle className="text-lg">Relatórios</CardTitle>
+              <CardTitle className="text-lg">Impacto Ambiental</CardTitle>
               <CardDescription>
-                Visualize estatísticas e relatórios dos seus produtos cadastrados
+                Visualize sua contribuição para a sustentabilidade
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-0">
-              <Button variant="outline" className="w-full">
-                <BarChart3 className="h-4 w-4 mr-2" />
-                Ver Relatórios
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => navigate('/impacto-ambiental')}
+              >
+                <Leaf className="h-4 w-4 mr-2" />
+                Ver Impacto
               </Button>
             </CardContent>
           </Card>

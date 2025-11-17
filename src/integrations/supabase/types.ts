@@ -340,16 +340,19 @@ export type Database = {
       }
       tipo_produto: {
         Row: {
+          consumo_c02: number | null
           data_insercao: string
           id: number
           nome: string
         }
         Insert: {
+          consumo_c02?: number | null
           data_insercao: string
           id?: number
           nome: string
         }
         Update: {
+          consumo_c02?: number | null
           data_insercao?: string
           id?: number
           nome?: string
